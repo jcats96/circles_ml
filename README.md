@@ -4,12 +4,12 @@ Circle-counting experiments using TensorFlow/Keras on 32x32 binary images.
 
 ## Setup (Windows)
 
-This project is configured to use Python 3.9 for TensorFlow compatibility.
+This project is configured to use Python 3.12 for TensorFlow compatibility.
 
 1. Create the virtual environment:
 
 ```powershell
-py -3.9 -m venv .venv
+py -3.12 -m venv .venv
 ```
 
 2. Install dependencies:
@@ -17,6 +17,14 @@ py -3.9 -m venv .venv
 ```powershell
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+If `py -3.12` is not available, install Python 3.12 first, then re-run the commands above.
+
+Optional quick check:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import sys, tensorflow as tf; print(sys.version); print(tf.__version__)"
 ```
 
 3. Run the model sanity check:
