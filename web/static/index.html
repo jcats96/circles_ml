@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circles ML</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <!-- Chart.js from CDN (local-only tool, CDN is fine) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>⬤ Circles ML</h1>
+    <span id="server-status" class="badge">Connecting…</span>
+  </header>
+
+  <main>
+    <!-- ── Drawing Panel ─────────────────────────── -->
+    <section class="card" id="draw-panel">
+      <h2>Draw</h2>
+      <div class="canvas-wrap">
+        <canvas id="draw-canvas" width="32" height="32"></canvas>
+      </div>
+      <div class="tool-row">
+        <button id="btn-brush" class="tool-btn active" title="Brush">✏️ Brush</button>
+        <button id="btn-erase" class="tool-btn" title="Erase">🧹 Erase</button>
+        <button id="btn-clear" class="secondary-btn">Clear</button>
+        <label class="toggle-label">
+          <input type="checkbox" id="chk-grid" /> Grid
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="chk-threshold" /> Binary
+        </label>
+      </div>
+    </section>
+
+    <!-- ── Sample Actions Panel ──────────────────── -->
+    <section class="card" id="actions-panel">
+      <h2>Sample Actions</h2>
+      <label>
+        Circle count
+        <input type="number" id="circle-count" min="0" max="50" value="0" />
+      </label>
+      <div class="btn-row">
+        <button id="btn-save-training" class="primary-btn">💾 Save to Training Set</button>
+        <button id="btn-save-prediction" class="secondary-btn">📁 Save to Prediction Set</button>
+        <button id="btn-predict-image" class="primary-btn">🔮 Predict This Image</button>
+      </div>
+      <div id="save-feedback" class="feedback hidden"></div>
+    </section>
+
+    <!-- ── Prediction Results ────────────────────── -->
+    <section class="card" id="prediction-panel">
+      <h2>Prediction Results</h2>
+      <div id="prediction-results">
+        <p class="muted">No predictions yet.</p>
+      </div>
+      <hr />
+      <h3>Directory Prediction</h3>
+      <button id="btn-predict-dir" class="secondary-btn">🗂️ Predict test_data/</button>
+      <div id="dir-prediction-results"></div>
+    </section>
+
+    <!-- ── Training Controls ─────────────────────── -->
+    <section class="card" id="train-panel">
+      <h2>Training Controls</h2>
+      <div class="form-grid">
+        <label>Epochs <input type="number" id="epochs" min="1" max="1000" value="20" /></label>
+        <label>Batch Size <input type="number" id="batch-size" min="1" max="512" value="8" /></label>
+        <label>Val Split <input type="number" id="val-split" min="0" max="0.9" step="0.05" value="0.25" /></label>
+        <label>Seed <input type="number" id="seed" value="42" /></label>
+      </div>
+      <div class="btn-row">
+        <button id="btn-start-training" class="primary-btn">🚀 Start Training</button>
+        <button id="btn-cancel-training" class="danger-btn hidden">🛑 Cancel</button>
+      </div>
+      <div id="train-feedback" class="feedback hidden"></div>
+    </section>
+
+    <!-- ── Training Progress ─────────────────────── -->
+    <section class="card" id="progress-panel">
+      <h2>Training Progress</h2>
+      <div id="train-status-row">
+        <span class="muted" id="current-job-label">No active job.</span>
+        <span id="current-epoch-label"></span>
+      </div>
+
+      <div class="charts-grid">
+        <div>
+          <h4>Loss</h4>
+          <canvas id="chart-loss"></canvas>
+        </div>
+        <div>
+          <h4>MAE</h4>
+          <canvas id="chart-mae"></canvas>
+        </div>
+      </div>
+
+      <div id="summary-table-wrap" class="hidden">
+        <h3>Summary</h3>
+        <table id="summary-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Final Train MAE</th>
+              <th>Final Val MAE</th>
+              <th>Weights</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
