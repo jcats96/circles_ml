@@ -19,7 +19,7 @@ each image as a flat vector of 1,024 numbers or as a (32, 32, 1) tensor.
 
 ## Approach 1 – Fully-Connected (Dense) Network
 
-This is the simplest starting point and is already implemented in `model.py`.
+This is the simplest starting point and is already implemented in `models/model_dense.py`.
 
 ```
 Input (32×32×1)
@@ -108,8 +108,8 @@ This removes the need for manual annotation entirely.
 
 ## Recommended Starting Point
 
-1. Start with **Approach 1** (dense network, already in `model.py`) to verify
+1. Start with **Approach 1** (dense network, already in `models/model_dense.py`) to verify
    the training pipeline end-to-end.
-2. Switch to **Approach 2** (CNN) once everything works, and compare accuracy.
+2. Switch to **Approach 2** (CNN in `models/model_cnn.py`) once everything works, and compare accuracy.
 3. If the count range is small (e.g. 0–5), try **Approach 3** (classification).
 4. Use **Approach 4** to generate as much labelled data as needed cheaply.
