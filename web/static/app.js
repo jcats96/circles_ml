@@ -316,6 +316,7 @@ document.getElementById("btn-save-training").addEventListener("click", async () 
     if (res.ok) {
       showFeedback("save-feedback", `✅ Saved as ${data.filename}`, "success");
       refreshTrainingSampleCount();
+      loadTrainingDataTable();
     }
     else        showFeedback("save-feedback", `Error: ${data.detail}`, "error");
   } catch (e) { showFeedback("save-feedback", `Request failed: ${e}`, "error"); }
