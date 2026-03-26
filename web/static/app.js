@@ -97,6 +97,7 @@ function switchMode(mode) {
 
   document.getElementById("custom-dataset-bar").classList.toggle("hidden", !isCustom);
   document.getElementById("count-label").textContent = isCustom ? "Pattern count" : "Circle count";
+  document.getElementById("transfer-learning-cb").checked = isCustom;
 
   if (isCustom) {
     // Refresh the dataset dropdown; select the first custom dataset if none selected
@@ -525,7 +526,7 @@ document.getElementById("btn-start-training").addEventListener("click", async ()
     const res  = await fetch("/api/train", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ epochs, batch_size: batchSize, val_split: valSplit, seed, models, dataset: currentDataset, transfer_learning: currentMode === "custom" }),
+      body: JSON.stringify({ epochs, batch_size: batchSize, val_split: valSplit, seed, models, dataset: currentDataset, transfer_learning: document.getElementById("transfer-learning-cb").checked }),
     });
     const data = await res.json();
     if (!res.ok) { showFeedback("train-feedback", `Error: ${data.detail}`, "error"); return; }

@@ -90,6 +90,9 @@
         <label>Val Split <input type="number" id="val-split" min="0" max="0.9" step="0.05" value="0.25" /></label>
         <label>Seed <input type="number" id="seed" value="42" /></label>
       </div>
+      <label class="toggle-label" id="transfer-learning-toggle">
+        <input type="checkbox" id="transfer-learning-cb" /> 🔄 Transfer Learning (freeze conv layers, reuse circle weights)
+      </label>
       <div class="btn-row">
         <button id="btn-start-training" class="primary-btn">🚀 Start Training</button>
         <button id="btn-cancel-training" class="danger-btn hidden">🛑 Cancel</button>
