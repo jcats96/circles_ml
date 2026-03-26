@@ -71,6 +71,24 @@ Optional quick check:
 .\.venv\Scripts\python.exe main.py
 ```
 
+## Web interface
+
+The project includes a local web UI backed by a FastAPI server. Once dependencies are installed, start the server from the project root:
+
+```powershell
+.\.venv\Scripts\uvicorn.exe web.app:app --reload --port 8000
+```
+
+Then open your browser at **http://localhost:8000**.
+
+From the UI you can:
+
+- Draw 32×32 images on a canvas and save them to the training set or prediction set.
+- Start a training run with configurable epochs, batch size, validation split, and seed, and watch live per-epoch metrics.
+- Run predictions on a single drawn image or on every image in `test_data/`, and see each model's output.
+
+The backend API docs are available at **http://localhost:8000/docs** (Swagger UI) while the server is running.
+
 ## Project layout
 
 - `models/model_dense.py`: dense baseline model
