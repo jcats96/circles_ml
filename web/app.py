@@ -190,11 +190,12 @@ async def get_prediction_samples():
 @app.post("/api/weights/drop")
 async def drop_weights():
     """Delete all known model weight files from weights/ directory."""
+    global _models_cache
     removed = []
     missing = []
 
-    for _, _, weight_name in MODEL_SPECS:
-        weight_path = Path(WEIGHTS_DIR) / weight_name
+    for _, weight_name, _ in MODEL_SPECS:
+        weight_path = Path(WEIGHTS_DIR) / f"{weight_name}.weights.h5"
         if weight_path.exists():
             try:
                 weight_path.unlink()
@@ -203,6 +204,9 @@ async def drop_weights():
                 raise HTTPException(status_code=500, detail=f"Failed deleting {weight_name}: {exc}")
         else:
             missing.append(weight_name)
+
+    # Invalidate cached models so next prediction reloads from disk
+    _models_cache = None
 
     return {
         "removed": removed,
@@ -244,6 +248,10 @@ async def start_training(req: TrainRequest, background_tasks: BackgroundTasks):
             job.fail(str(exc))
             return
 
+        def _invalidate_cache():
+            global _models_cache
+            _models_cache = None
+
         start_training_job(
             job=job,
             x=x,
@@ -252,6 +260,7 @@ async def start_training(req: TrainRequest, background_tasks: BackgroundTasks):
             seed=req.seed,
             weights_dir=WEIGHTS_DIR,
             runs_dir=RUNS_DIR,
+            on_complete=_invalidate_cache,
         )
 
     background_tasks.add_task(_run)

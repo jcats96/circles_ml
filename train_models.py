@@ -96,6 +96,24 @@ def split_dataset(
     return x[train_idx], y[train_idx], x[val_idx], y[val_idx]
 
 
+def augment_training_data(
+    x: np.ndarray, y: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Augment training images with horizontal and vertical flips.
+
+    Circle counts are invariant to flips, so labels are preserved.
+    Returns ~4x the original data (original + 3 flipped variants).
+    """
+    x_hflip = x[:, :, ::-1, :]   # horizontal flip
+    x_vflip = x[:, ::-1, :, :]   # vertical flip
+    x_hvflip = x[:, ::-1, ::-1, :]  # both
+
+    x_aug = np.concatenate([x, x_hflip, x_vflip, x_hvflip], axis=0)
+    y_aug = np.tile(y, 4)
+
+    return x_aug, y_aug
+
+
 def train_one_model(
     label: str,
     weight_name: str,
@@ -113,6 +131,10 @@ def train_one_model(
     print("=" * 60)
     print(f"Training {label} model")
 
+    early_stop = keras.callbacks.EarlyStopping(
+        monitor="val_mae", patience=10, restore_best_weights=True
+    )
+
     history = model.fit(
         x_train,
         y_train,
@@ -120,6 +142,7 @@ def train_one_model(
         epochs=epochs,
         batch_size=min(batch_size, len(x_train)),
         verbose=2,
+        callbacks=[early_stop],
     )
 
     os.makedirs(weights_dir, exist_ok=True)
@@ -148,8 +171,9 @@ def main() -> None:
 
     x, y = load_dataset(args.data_dir)
     x_train, y_train, x_val, y_val = split_dataset(x, y, args.val_split, args.seed)
+    x_train, y_train = augment_training_data(x_train, y_train)
 
-    print(f"Train samples: {len(x_train)}")
+    print(f"Train samples: {len(x_train)} (after augmentation)")
     print(f"Validation samples: {len(x_val)}")
 
     dense_weights = train_one_model(

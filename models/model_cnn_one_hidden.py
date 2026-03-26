@@ -35,6 +35,7 @@ def build_model() -> keras.Model:
             keras.layers.MaxPooling2D(pool_size=(2, 2)),
             keras.layers.Flatten(),
             keras.layers.Dense(64, activation="relu"),
+            keras.layers.Dropout(0.3),
             keras.layers.Dense(1, activation="softplus"),
         ],
         name="circle_counter_cnn_one_hidden",

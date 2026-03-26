@@ -30,6 +30,14 @@ def _install_tf_mock():
 
     keras_callbacks_mock.Callback = _FakeCallback
 
+    class _FakeEarlyStopping(_FakeCallback):
+        """Minimal stand-in for keras.callbacks.EarlyStopping."""
+
+        def __init__(self, **kwargs):
+            super().__init__()
+
+    keras_callbacks_mock.EarlyStopping = _FakeEarlyStopping
+
     # ── keras.Model / Sequential / layers ────────────────────────────────────
     keras_layers_mock = types.ModuleType("tensorflow.keras.layers")
     keras_mock = types.ModuleType("tensorflow.keras")

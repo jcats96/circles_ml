@@ -121,6 +121,11 @@ def _train_models(
         model = builder()
         effective_batch = min(batch_size, len(x_train))
 
+        from tensorflow import keras as _keras
+        early_stop = _keras.callbacks.EarlyStopping(
+            monitor="val_mae", patience=10, restore_best_weights=True
+        )
+
         history = model.fit(
             x_train,
             y_train,
@@ -128,7 +133,7 @@ def _train_models(
             epochs=epochs,
             batch_size=effective_batch,
             verbose=0,
-            callbacks=[_make_callback(job, label)],
+            callbacks=[_make_callback(job, label), early_stop],
         )
 
         if job.status == JobStatus.CANCELLED:
@@ -198,6 +203,7 @@ def start_training_job(
     seed: int = 42,
     weights_dir: str = "weights",
     runs_dir: str = "runs",
+    on_complete: Optional[Callable[[], None]] = None,
 ) -> threading.Thread:
     """Split the dataset and launch training in a daemon thread.
 
@@ -211,9 +217,10 @@ def start_training_job(
     if root not in sys.path:
         sys.path.insert(0, root)
 
-    from train_models import split_dataset
+    from train_models import split_dataset, augment_training_data
 
     x_train, y_train, x_val, y_val = split_dataset(x, y, val_split, seed)
+    x_train, y_train = augment_training_data(x_train, y_train)
 
     epochs = int(job.config.get("epochs", 10))
     batch_size = int(job.config.get("batch_size", 8))
@@ -235,6 +242,9 @@ def start_training_job(
             )
         except Exception as exc:
             job.fail(str(exc))
+        finally:
+            if on_complete is not None:
+                on_complete()
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()

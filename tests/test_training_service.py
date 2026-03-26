@@ -81,6 +81,7 @@ def patch_model_builders(monkeypatch):
         return x[:n], y[:n], x[n:], y[n:]
 
     train_models_mock.split_dataset = _split
+    train_models_mock.augment_training_data = lambda x, y: (x, y)
     monkeypatch.setitem(sys.modules, "train_models", train_models_mock)
 
 

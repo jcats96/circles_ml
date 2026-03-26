@@ -330,6 +330,7 @@ class TestTrainingEndpoints:
         train_models_mock = types.ModuleType("train_models")
         train_models_mock.load_dataset = mock.MagicMock(return_value=(dummy_x, dummy_y))
         train_models_mock.split_dataset = lambda x, y, v, s: (x, y, x[:1], y[:1])
+        train_models_mock.augment_training_data = lambda x, y: (x, y)
         monkeypatch.setitem(sys.modules, "train_models", train_models_mock)
 
         resp = await client.post(
