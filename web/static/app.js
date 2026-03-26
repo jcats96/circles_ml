@@ -525,7 +525,7 @@ document.getElementById("btn-start-training").addEventListener("click", async ()
     const res  = await fetch("/api/train", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ epochs, batch_size: batchSize, val_split: valSplit, seed, models, dataset: currentDataset }),
+      body: JSON.stringify({ epochs, batch_size: batchSize, val_split: valSplit, seed, models, dataset: currentDataset, transfer_learning: currentMode === "custom" }),
     });
     const data = await res.json();
     if (!res.ok) { showFeedback("train-feedback", `Error: ${data.detail}`, "error"); return; }

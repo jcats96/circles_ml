@@ -78,6 +78,7 @@ def _train_models(
     selected_models: list[str],
     weights_dir: str,
     runs_dir: str,
+    transfer_learning: bool = False,
 ) -> None:
     """Train all four model variants and update *job* with metrics/summary.
 
@@ -89,6 +90,7 @@ def _train_models(
         build_cnn_model,
         build_cnn_one_hidden_model,
     )
+    from tensorflow import keras
 
     job.status = JobStatus.RUNNING
 
@@ -104,7 +106,8 @@ def _train_models(
     ]
 
     os.makedirs(weights_dir, exist_ok=True)
-    _clear_existing_weights(weights_dir)
+    if not transfer_learning:
+        _clear_existing_weights(weights_dir)
 
     run_dir = os.path.join(runs_dir, job.job_id)
     os.makedirs(run_dir, exist_ok=True)
@@ -119,6 +122,22 @@ def _train_models(
 
         model_start = time.monotonic()
         model = builder()
+
+        # ── Transfer learning: load circle weights & freeze conv layers ──
+        if transfer_learning:
+            pretrained_path = os.path.join(weights_dir, f"{weight_name}.weights.h5")
+            if os.path.exists(pretrained_path):
+                model.load_weights(pretrained_path)
+                for layer in model.layers:
+                    if isinstance(layer, (keras.layers.Conv2D, keras.layers.MaxPooling2D)):
+                        layer.trainable = False
+                # Re-compile so the optimizer only tracks trainable params
+                model.compile(
+                    optimizer="adam",
+                    loss="mean_squared_error",
+                    metrics=["mae"],
+                )
+
         effective_batch = min(batch_size, len(x_train))
 
         from tensorflow import keras as _keras
@@ -225,6 +244,7 @@ def start_training_job(
     epochs = int(job.config.get("epochs", 10))
     batch_size = int(job.config.get("batch_size", 8))
     selected_models = list(job.config.get("models") or [label for label, _, _ in MODEL_SPECS])
+    transfer_learning = bool(job.config.get("transfer_learning", False))
 
     def _run():
         try:
@@ -239,6 +259,7 @@ def start_training_job(
                 selected_models=selected_models,
                 weights_dir=weights_dir,
                 runs_dir=runs_dir,
+                transfer_learning=transfer_learning,
             )
         except Exception as exc:
             job.fail(str(exc))

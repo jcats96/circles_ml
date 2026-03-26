@@ -113,6 +113,7 @@ class TrainRequest(BaseModel):
         min_length=1,
     )
     dataset: str = Field("circle", description="Dataset ID to train on (e.g. 'circle' or 'custom_stars')")
+    transfer_learning: bool = Field(False, description="Use transfer learning: load circle weights and freeze conv layers")
 
 
 class CreateDatasetRequest(BaseModel):
@@ -308,6 +309,7 @@ async def start_training(req: TrainRequest, background_tasks: BackgroundTasks):
         "seed": req.seed,
         "models": req.models,
         "dataset": req.dataset,
+        "transfer_learning": req.transfer_learning,
     }
     job = create_job(config)
 
