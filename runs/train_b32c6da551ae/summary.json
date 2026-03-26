@@ -1,0 +1,22 @@
+{
+  "job_id": "train_b32c6da551ae",
+  "completed_at": "2026-03-26T03:27:25.471207+00:00",
+  "elapsed_seconds": 53.87,
+  "config": {
+    "epochs": 100,
+    "batch_size": 4,
+    "val_split": 0.25,
+    "seed": 2,
+    "models": [
+      "CNNOneHidden"
+    ]
+  },
+  "models": {
+    "CNNOneHidden": {
+      "weights_path": "/mnt/z/Documents/VSCode/circles_ml/weights/cnn_one_hidden.weights.h5",
+      "final_train_mae": 0.06532327830791473,
+      "final_val_mae": 0.41067326068878174,
+      "elapsed_seconds": 53.86
+    }
+  }
+}

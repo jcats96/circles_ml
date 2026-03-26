@@ -10,6 +10,7 @@ from tensorflow import keras
 from models import (
     build_cnn_extra_hidden_model,
     build_cnn_model,
+    build_cnn_one_hidden_model,
     build_dense_model,
     build_dense_two_hidden_model,
 )
@@ -190,6 +191,19 @@ def main() -> None:
         weights_dir=args.weights_dir,
     )
 
+    cnn_one_hidden_weights = train_one_model(
+        label="CNNOneHidden",
+        weight_name="cnn_one_hidden",
+        builder=build_cnn_one_hidden_model,
+        x_train=x_train,
+        y_train=y_train,
+        x_val=x_val,
+        y_val=y_val,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        weights_dir=args.weights_dir,
+    )
+
     cnn_extra_hidden_weights = train_one_model(
         label="CNNExtraHidden",
         weight_name="cnn_extra_hidden",
@@ -208,6 +222,7 @@ def main() -> None:
     print(f"Dense weights: {dense_weights}")
     print(f"DenseTwoHidden weights: {dense_two_hidden_weights}")
     print(f"CNN weights: {cnn_weights}")
+    print(f"CNNOneHidden weights: {cnn_one_hidden_weights}")
     print(f"CNNExtraHidden weights: {cnn_extra_hidden_weights}")
     print("To load later, run: python main.py --load-weights")
 

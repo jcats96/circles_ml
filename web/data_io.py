@@ -183,6 +183,41 @@ def list_prediction_samples(test_dir: str) -> List[str]:
     return sorted(f for f in os.listdir(test_dir) if f.lower().endswith(".png"))
 
 
+def update_training_label(data_dir: str, filename: str, circles: int) -> bool:
+    """Update the circle label for a specific filename in labels.csv.
+
+    Returns True if a row was updated, otherwise False.
+    """
+    if circles < 0:
+        raise ValueError(f"circles must be non-negative, got {circles}")
+
+    labels_path = os.path.join(data_dir, "labels.csv")
+    if not os.path.exists(labels_path):
+        return False
+
+    with _csv_lock:
+        with open(labels_path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+            fieldnames = reader.fieldnames or ["filename", "circles"]
+
+    updated = False
+    for row in rows:
+        if (row.get("filename") or "").strip() == filename:
+            row["circles"] = str(circles)
+            updated = True
+
+    if not updated:
+        return False
+
+    with open(labels_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    return True
+
+
 def read_image_as_png_bytes(path: str) -> bytes:
     """Return the raw PNG bytes for an image file (re-encoding if necessary)."""
     img = Image.open(path).convert("L").resize((32, 32), Image.NEAREST)

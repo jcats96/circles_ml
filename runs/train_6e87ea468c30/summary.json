@@ -1,0 +1,32 @@
+{
+  "job_id": "train_6e87ea468c30",
+  "completed_at": "2026-03-25T22:16:10.877931+00:00",
+  "config": {
+    "epochs": 20,
+    "batch_size": 8,
+    "val_split": 0.25,
+    "seed": 42
+  },
+  "models": {
+    "Dense": {
+      "weights_path": "Z:\\Documents\\VSCode\\circles_ml\\weights\\dense.weights.h5",
+      "final_train_mae": 1.3571428060531616,
+      "final_val_mae": 1.5
+    },
+    "DenseTwoHidden": {
+      "weights_path": "Z:\\Documents\\VSCode\\circles_ml\\weights\\dense_two_hidden.weights.h5",
+      "final_train_mae": 1.3571428060531616,
+      "final_val_mae": 1.5
+    },
+    "CNN": {
+      "weights_path": "Z:\\Documents\\VSCode\\circles_ml\\weights\\cnn.weights.h5",
+      "final_train_mae": 1.3571428060531616,
+      "final_val_mae": 1.5
+    },
+    "CNNExtraHidden": {
+      "weights_path": "Z:\\Documents\\VSCode\\circles_ml\\weights\\cnn_extra_hidden.weights.h5",
+      "final_train_mae": 1.3571428060531616,
+      "final_val_mae": 1.5
+    }
+  }
+}

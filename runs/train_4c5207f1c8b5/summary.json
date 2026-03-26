@@ -1,0 +1,32 @@
+{
+  "job_id": "train_4c5207f1c8b5",
+  "completed_at": "2026-03-26T00:05:18.849468+00:00",
+  "config": {
+    "epochs": 20,
+    "batch_size": 4,
+    "val_split": 0.2,
+    "seed": 1,
+    "models": [
+      "CNN",
+      "CNNOneHidden",
+      "CNNExtraHidden"
+    ]
+  },
+  "models": {
+    "CNN": {
+      "weights_path": "Z:\\Documents\\VSCode\\circles_ml\\weights\\cnn.weights.h5",
+      "final_train_mae": 0.23499596118927002,
+      "final_val_mae": 0.5284867286682129
+    },
+    "CNNOneHidden": {
+      "weights_path": "Z:\\Documents\\VSCode\\circles_ml\\weights\\cnn_one_hidden.weights.h5",
+      "final_train_mae": 0.18307611346244812,
+      "final_val_mae": 0.4675837755203247
+    },
+    "CNNExtraHidden": {
+      "weights_path": "Z:\\Documents\\VSCode\\circles_ml\\weights\\cnn_extra_hidden.weights.h5",
+      "final_train_mae": 0.09085869044065475,
+      "final_val_mae": 0.44213220477104187
+    }
+  }
+}

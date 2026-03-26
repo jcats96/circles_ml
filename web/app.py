@@ -6,6 +6,8 @@ Start with:
 """
 
 import asyncio
+import base64
+import binascii
 import json
 import os
 import queue
@@ -16,6 +18,7 @@ from typing import Optional
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from PIL import UnidentifiedImageError
 from pydantic import BaseModel, Field
 
 # ── ensure project root is importable when this module is loaded ──────────────
@@ -29,10 +32,11 @@ from web.data_io import (
     read_image_as_png_bytes,
     save_prediction_sample,
     save_training_sample,
+    update_training_label,
 )
 from web.prediction_service import predict_directory, predict_image_bytes
 from web.training_jobs import JobStatus, create_job, get_job, list_jobs
-from web.training_service import start_training_job
+from web.training_service import MODEL_SPECS, start_training_job
 
 # ──────────────────────────────────────────────
 # Directories (resolved relative to project root)
@@ -53,6 +57,10 @@ app = FastAPI(title="Circles ML", version="1.0.0")
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static_dir):
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+
+_training_images_dir = os.path.join(TRAINING_DATA_DIR, "images")
+if os.path.isdir(_training_images_dir):
+    app.mount("/training_data/images", StaticFiles(directory=_training_images_dir), name="training_images")
 
 
 # ──────────────────────────────────────────────
@@ -88,11 +96,19 @@ class PredictionSampleRequest(BaseModel):
     image: str = Field(..., description="Base64-encoded PNG image data")
 
 
+class UpdateTrainingLabelRequest(BaseModel):
+    circles: int = Field(..., ge=0, description="Updated number of circles")
+
+
 class TrainRequest(BaseModel):
     epochs: int = Field(10, ge=1, le=1000)
     batch_size: int = Field(8, ge=1, le=512)
     val_split: float = Field(0.25, ge=0.0, le=0.9)
     seed: int = Field(42)
+    models: list[str] = Field(
+        default_factory=lambda: [label for label, _, _ in MODEL_SPECS],
+        min_length=1,
+    )
 
 
 class PredictImageRequest(BaseModel):
@@ -138,6 +154,22 @@ async def get_training_samples():
     return {"samples": samples, "count": len(samples)}
 
 
+@app.patch("/api/training-samples/{filename}")
+async def patch_training_sample(filename: str, req: UpdateTrainingLabelRequest):
+    """Update the label (circle count) for a training sample filename."""
+    try:
+        updated = update_training_label(TRAINING_DATA_DIR, filename, req.circles)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"Training sample not found: {filename}")
+
+    return {"filename": filename, "circles": req.circles}
+
+
 @app.post("/api/prediction-samples", status_code=201)
 async def post_prediction_sample(req: PredictionSampleRequest):
     """Save a drawn image to the prediction/test set."""
@@ -155,6 +187,31 @@ async def get_prediction_samples():
     return {"files": files, "count": len(files)}
 
 
+@app.post("/api/weights/drop")
+async def drop_weights():
+    """Delete all known model weight files from weights/ directory."""
+    removed = []
+    missing = []
+
+    for _, _, weight_name in MODEL_SPECS:
+        weight_path = Path(WEIGHTS_DIR) / weight_name
+        if weight_path.exists():
+            try:
+                weight_path.unlink()
+                removed.append(weight_name)
+            except OSError as exc:
+                raise HTTPException(status_code=500, detail=f"Failed deleting {weight_name}: {exc}")
+        else:
+            missing.append(weight_name)
+
+    return {
+        "removed": removed,
+        "removed_count": len(removed),
+        "missing": missing,
+        "missing_count": len(missing),
+    }
+
+
 # ──────────────────────────────────────────────
 # Training endpoints
 # ──────────────────────────────────────────────
@@ -163,11 +220,17 @@ async def get_prediction_samples():
 @app.post("/api/train", status_code=202)
 async def start_training(req: TrainRequest, background_tasks: BackgroundTasks):
     """Start a background training job and return the job_id."""
+    valid_models = {label for label, _, _ in MODEL_SPECS}
+    invalid_models = sorted(set(req.models) - valid_models)
+    if invalid_models:
+        raise HTTPException(status_code=422, detail=f"Unknown model selection: {', '.join(invalid_models)}")
+
     config = {
         "epochs": req.epochs,
         "batch_size": req.batch_size,
         "val_split": req.val_split,
         "seed": req.seed,
+        "models": req.models,
     }
     job = create_job(config)
 
@@ -321,18 +384,32 @@ async def get_all_jobs():
 @app.post("/api/predict-image")
 async def predict_image_endpoint(req: PredictImageRequest):
     """Predict the circle count for a single drawn image."""
-    import base64
-
     raw = req.image
     if "," in raw:
         raw = raw.split(",", 1)[1]
-    image_bytes = base64.b64decode(raw)
 
-    if req.save_to_test:
-        save_prediction_sample(image_bytes, TEST_DATA_DIR)
+    try:
+        image_bytes = base64.b64decode(raw, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid image payload") from exc
 
-    models = await get_models()
-    predictions = predict_image_bytes(image_bytes, models)
+    try:
+        if req.save_to_test:
+            save_prediction_sample(image_bytes, TEST_DATA_DIR)
+
+        models = await get_models()
+        predictions = predict_image_bytes(image_bytes, models)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except UnidentifiedImageError as exc:
+        raise HTTPException(status_code=400, detail="Invalid image data") from exc
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {exc}") from exc
+
     return {"predictions": predictions}
 
 
@@ -343,6 +420,14 @@ async def predict_directory_endpoint(directory: Optional[str] = Query(None)):
     if not os.path.isdir(predict_dir):
         raise HTTPException(status_code=404, detail=f"Directory not found: {predict_dir}")
 
-    models = await get_models()
-    results = predict_directory(predict_dir, models)
+    try:
+        models = await get_models()
+        results = predict_directory(predict_dir, models)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {exc}") from exc
+
     return {"results": results, "count": len(results)}

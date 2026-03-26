@@ -1,0 +1,2 @@
+{"job_id": "train_31267cef4264", "model": "CNNExtraHidden", "epoch": 1, "loss": 1.6445668935775757, "mae": 0.9640787243843079, "val_loss": 0.7295082807540894, "val_mae": 0.6840092539787292}
+{"job_id": "train_31267cef4264", "model": "CNNExtraHidden", "epoch": 2, "loss": 1.3880465030670166, "mae": 0.8948656916618347, "val_loss": 0.6682083010673523, "val_mae": 0.6691624522209167}

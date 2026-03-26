@@ -2,6 +2,44 @@
 
 Circle-counting experiments using TensorFlow/Keras on 32x32 binary images.
 
+## Setup (Linux/macOS/Unix)
+
+This project is configured to use Python 3.12 for TensorFlow compatibility.
+
+1. Create the virtual environment:
+
+```bash
+python3.12 -m venv .venv
+```
+
+If `python3.12` is not available, install Python 3.12 first (or use your package manager), then re-run the command.
+
+2. Install dependencies:
+
+```bash
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
+```
+
+Optional quick check:
+
+```bash
+python3 -c "import sys, tensorflow as tf; print(sys.version); print(tf.__version__)"
+```
+
+3. Run the model sanity check:
+
+```bash
+python3 main.py
+```
+
+## Setup (WSL)
+
+Use the same Linux steps above from a WSL terminal in this project folder.
+
+If the project is on a Windows-mounted drive (for example `/mnt/c/...`), commands still work, but training and file I/O are usually faster when the repo lives in the WSL filesystem (for example `~/projects/circles_ml`).
+
 ## Setup (Windows)
 
 This project is configured to use Python 3.12 for TensorFlow compatibility.
@@ -61,3 +99,19 @@ Load the saved weights later:
 ```powershell
 .\.venv\Scripts\python.exe main.py --load-weights
 ```
+
+## Start the web server
+
+From Linux/macOS/WSL (with the virtual environment active):
+
+```bash
+python3 -m uvicorn web.app:app --reload --port 8000
+```
+
+From Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn web.app:app --reload --port 8000
+```
+
+Then open <http://127.0.0.1:8000> in your browser.

@@ -75,7 +75,7 @@ def mock_models(monkeypatch):
             "weights_loaded": True,
             "weights_path": f"/tmp/{label}.h5",
         }
-        for i, label in enumerate(["Dense", "DenseTwoHidden", "CNN", "CNNExtraHidden"])
+        for i, label in enumerate(["CNN", "CNNOneHidden", "CNNExtraHidden"])
     }
 
     async def _get_models():
@@ -216,6 +216,40 @@ class TestPredictImage:
         assert "rounded" in pred
         assert "weights_loaded" in pred
 
+    async def test_predict_image_invalid_base64_returns_400(self, client):
+        resp = await client.post(
+            "/api/predict-image",
+            json={"image": "data:image/png;base64,not-valid-base64!!!"},
+        )
+        assert resp.status_code == 400
+
+    async def test_predict_image_invalid_image_bytes_returns_400(self, client, monkeypatch):
+        import web.app as app_module
+
+        async def _get_models():
+            return mock_models_payload()
+
+        monkeypatch.setattr(app_module, "get_models", _get_models)
+        bad_bytes = base64.b64encode(b"not an image").decode()
+        resp = await client.post(
+            "/api/predict-image",
+            json={"image": bad_bytes},
+        )
+        assert resp.status_code == 400
+
+    async def test_predict_image_missing_model_file_returns_404(self, client, monkeypatch):
+        import web.app as app_module
+
+        async def _raise_missing_models():
+            raise FileNotFoundError("Missing model weights")
+
+        monkeypatch.setattr(app_module, "get_models", _raise_missing_models)
+        resp = await client.post(
+            "/api/predict-image",
+            json={"image": make_b64_png()},
+        )
+        assert resp.status_code == 404
+
 
 # ── predict-directory ─────────────────────────────────────────────────────────
 
@@ -257,6 +291,26 @@ class TestPredictDirectory:
             resp = await client.post("/api/predict-directory")
         assert resp.json()["count"] == 3
 
+    async def test_predict_directory_missing_model_file_returns_404(self, client, monkeypatch):
+        import web.app as app_module
+
+        async def _raise_missing_models():
+            raise FileNotFoundError("Missing model weights")
+
+        monkeypatch.setattr(app_module, "get_models", _raise_missing_models)
+        resp = await client.post("/api/predict-directory")
+        assert resp.status_code == 404
+
+
+def mock_models_payload():
+    return {
+        "CNN": {
+            "model": mock.MagicMock(**{"predict.return_value": np.array([[1.0]])}),
+            "weights_loaded": True,
+            "weights_path": "/tmp/CNN.h5",
+        }
+    }
+
 
 # ── training endpoints ────────────────────────────────────────────────────────
 
@@ -266,7 +320,8 @@ class TestTrainingEndpoints:
         import web.app as app_module
 
         # Prevent actual training from running
-        monkeypatch.setattr(app_module, "start_training_job", mock.MagicMock())
+        mocked_start = mock.MagicMock()
+        monkeypatch.setattr(app_module, "start_training_job", mocked_start)
 
         # Mock train_models so it doesn't try to load TF
         import types
@@ -279,12 +334,21 @@ class TestTrainingEndpoints:
 
         resp = await client.post(
             "/api/train",
-            json={"epochs": 2, "batch_size": 4, "val_split": 0.25, "seed": 42},
+            json={"epochs": 2, "batch_size": 4, "val_split": 0.25, "seed": 42, "models": ["CNN", "CNNOneHidden"]},
         )
 
         assert resp.status_code == 202
         body = resp.json()
         assert "job_id" in body
+        mocked_start.assert_called_once()
+        assert mocked_start.call_args.kwargs["job"].config["models"] == ["CNN", "CNNOneHidden"]
+
+    async def test_start_training_rejects_unknown_model(self, client):
+        resp = await client.post(
+            "/api/train",
+            json={"epochs": 2, "batch_size": 4, "val_split": 0.25, "seed": 42, "models": ["NopeNet"]},
+        )
+        assert resp.status_code == 422
 
     async def test_get_training_status_404_unknown(self, client):
         resp = await client.get("/api/train/nonexistent-job")

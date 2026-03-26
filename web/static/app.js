@@ -6,21 +6,17 @@ const canvas      = document.getElementById("draw-canvas");
 const ctx         = canvas.getContext("2d");
 const NATIVE_SIZE = 32;
 
-// Fill black initially
-ctx.fillStyle = "#000";
+// Fill white initially
+ctx.fillStyle = "#fff";
 ctx.fillRect(0, 0, NATIVE_SIZE, NATIVE_SIZE);
 
 let drawing   = false;
 let tool      = "brush"; // "brush" | "erase"
-let showGrid  = false;
-let threshold = false;
 
 // ── Tool buttons ─────────────────────────────────────────
 document.getElementById("btn-brush").addEventListener("click", () => setTool("brush"));
 document.getElementById("btn-erase").addEventListener("click", () => setTool("erase"));
 document.getElementById("btn-clear").addEventListener("click", clearCanvas);
-document.getElementById("chk-grid").addEventListener("change", e => { showGrid = e.target.checked; redrawGrid(); });
-document.getElementById("chk-threshold").addEventListener("change", e => { threshold = e.target.checked; applyThreshold(); });
 
 function setTool(t) {
   tool = t;
@@ -29,32 +25,8 @@ function setTool(t) {
 }
 
 function clearCanvas() {
-  ctx.fillStyle = "#000";
+  ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, NATIVE_SIZE, NATIVE_SIZE);
-  redrawGrid();
-}
-
-function applyThreshold() {
-  if (!threshold) return;
-  const imgData = ctx.getImageData(0, 0, NATIVE_SIZE, NATIVE_SIZE);
-  const d = imgData.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const gray = (d[i] + d[i+1] + d[i+2]) / 3;
-    const v    = gray > 127 ? 255 : 0;
-    d[i] = d[i+1] = d[i+2] = v;
-  }
-  ctx.putImageData(imgData, 0, 0);
-  redrawGrid();
-}
-
-function redrawGrid() {
-  if (!showGrid) return;
-  ctx.strokeStyle = "rgba(88,166,255,0.3)";
-  ctx.lineWidth   = 0.05;
-  for (let i = 0; i <= NATIVE_SIZE; i++) {
-    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, NATIVE_SIZE); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(NATIVE_SIZE, i); ctx.stroke();
-  }
 }
 
 // ── Draw on canvas ───────────────────────────────────────
@@ -70,7 +42,7 @@ function getCanvasPos(e) {
 
 function drawPixel(x, y) {
   if (x < 0 || y < 0 || x >= NATIVE_SIZE || y >= NATIVE_SIZE) return;
-  ctx.fillStyle = tool === "brush" ? "#fff" : "#000";
+  ctx.fillStyle = tool === "brush" ? "#000" : "#fff";
   ctx.fillRect(x, y, 1, 1);
 }
 
@@ -98,6 +70,116 @@ function showFeedback(elId, msg, type = "info") {
   setTimeout(() => el.classList.add("hidden"), 5000);
 }
 
+function showPersistentFeedback(elId, msg, type = "info") {
+  const el = document.getElementById(elId);
+  el.textContent = msg;
+  el.className = `feedback ${type}`;
+  el.classList.remove("hidden");
+}
+
+async function refreshTrainingSampleCount() {
+  const el = document.getElementById("training-sample-count");
+  try {
+    const res = await fetch("/api/training-samples");
+    const data = await res.json();
+    if (!res.ok) {
+      el.textContent = "Training samples: unavailable";
+      return;
+    }
+    el.textContent = `Training samples: ${data.count}`;
+  } catch {
+    el.textContent = "Training samples: unavailable";
+  }
+}
+
+async function loadTrainingDataTable() {
+  const tbody = document.getElementById("training-data-table").querySelector("tbody");
+  tbody.innerHTML = "<tr><td colspan='4' class='muted'>Loading…</td></tr>";
+
+  try {
+    const res = await fetch("/api/training-samples");
+    const data = await res.json();
+    if (!res.ok) {
+      tbody.innerHTML = `<tr><td colspan='4' class='file-missing'>${escapeHtml(data.detail || "Failed to load samples")}</td></tr>`;
+      return;
+    }
+
+    const samples = data.samples || [];
+    if (samples.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='4' class='muted'>No training samples found.</td></tr>";
+      return;
+    }
+
+    tbody.innerHTML = "";
+    for (const sample of samples) {
+      const tr = document.createElement("tr");
+      const safeFilename = escapeHtml(sample.filename);
+      const circlesVal = Number.isInteger(sample.circles) ? sample.circles : 0;
+      const imageCell = sample.exists
+        ? `<img class="training-thumb" src="/training_data/images/${encodeURIComponent(sample.filename)}" alt="${safeFilename}" loading="lazy" decoding="async" />`
+        : "<span class='file-missing'>missing</span>";
+      tr.innerHTML = `
+        <td><code>${safeFilename}</code></td>
+        <td>${imageCell}</td>
+        <td>
+          <input
+            type="number"
+            class="circle-input"
+            min="0"
+            value="${circlesVal}"
+            data-filename="${safeFilename}"
+          />
+        </td>
+        <td>
+          <button class="secondary-btn btn-save-label" data-filename="${safeFilename}">Save</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    bindTrainingDataSaveButtons();
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan='4' class='file-missing'>Request failed: ${escapeHtml(String(e))}</td></tr>`;
+  }
+}
+
+function bindTrainingDataSaveButtons() {
+  const buttons = document.querySelectorAll(".btn-save-label");
+  buttons.forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const filename = btn.dataset.filename;
+      const input = document.querySelector(`input.circle-input[data-filename="${CSS.escape(filename)}"]`);
+      if (!input) return;
+
+      const circles = parseInt(input.value, 10);
+      if (isNaN(circles) || circles < 0) {
+        showPersistentFeedback("training-data-feedback", "Circle count must be a non-negative integer.", "error");
+        return;
+      }
+
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/training-samples/${encodeURIComponent(filename)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ circles }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showPersistentFeedback("training-data-feedback", `Error updating ${filename}: ${data.detail}`, "error");
+          return;
+        }
+
+        showPersistentFeedback("training-data-feedback", `Updated ${filename} to ${data.circles} circles.`, "success");
+      } catch (e) {
+        showPersistentFeedback("training-data-feedback", `Request failed: ${e}`, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
 // ── Sample actions ───────────────────────────────────────
 document.getElementById("btn-save-training").addEventListener("click", async () => {
   const circles = parseInt(document.getElementById("circle-count").value, 10);
@@ -109,7 +191,10 @@ document.getElementById("btn-save-training").addEventListener("click", async () 
       body: JSON.stringify({ image: getImageBase64(), circles }),
     });
     const data = await res.json();
-    if (res.ok) showFeedback("save-feedback", `✅ Saved as ${data.filename}`, "success");
+    if (res.ok) {
+      showFeedback("save-feedback", `✅ Saved as ${data.filename}`, "success");
+      refreshTrainingSampleCount();
+    }
     else        showFeedback("save-feedback", `Error: ${data.detail}`, "error");
   } catch (e) { showFeedback("save-feedback", `Request failed: ${e}`, "error"); }
 });
@@ -176,6 +261,14 @@ function escapeHtml(str) {
   return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
+function formatDuration(seconds) {
+  if (seconds == null) return "—";
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = (seconds % 60).toFixed(1);
+  return `${m}m ${s}s`;
+}
+
 // ── Training ─────────────────────────────────────────────
 let currentJobId  = null;
 let trainingSSE   = null;
@@ -193,6 +286,8 @@ const chartMAE = new Chart(document.getElementById("chart-mae"), {
   options: chartOptions("MAE"),
 });
 
+const MIN_LOG_VALUE = 1e-4;
+
 function chartOptions(title) {
   return {
     responsive: true,
@@ -200,16 +295,24 @@ function chartOptions(title) {
     plugins: { legend: { labels: { color: "#8b949e", font: { size: 10 } } } },
     scales: {
       x: { ticks: { color: "#8b949e", font: { size: 9 } }, grid: { color: "#30363d" } },
-      y: { ticks: { color: "#8b949e", font: { size: 9 } }, grid: { color: "#30363d" } },
+      y: {
+        type: "logarithmic",
+        ticks: { color: "#8b949e", font: { size: 9 } },
+        grid: { color: "#30363d" },
+      },
     },
   };
 }
 
+function toLogScaleValue(value) {
+  if (value == null) return null;
+  return Math.max(value, MIN_LOG_VALUE);
+}
+
 // Color palette for chart lines
 const MODEL_COLORS = {
-  Dense:           { train: "#58a6ff", val: "#1f6feb" },
-  DenseTwoHidden:  { train: "#3fb950", val: "#238636" },
-  CNN:             { train: "#d2a8ff", val: "#8957e5" },
+  CNN:             { train: "#58a6ff", val: "#1f6feb" },
+  CNNOneHidden:    { train: "#3fb950", val: "#238636" },
   CNNExtraHidden:  { train: "#ffa657", val: "#f0883e" },
 };
 
@@ -249,14 +352,14 @@ function pushMetric(event) {
   // Loss chart
   const trainLossDS = ensureDataset(chartLoss, `${model}-loss`, `${model} train`, colors.train);
   const valLossDS   = ensureDataset(chartLoss, `${model}-val-loss`, `${model} val`, colors.val, true);
-  trainLossDS.data  = buf.loss;
-  valLossDS.data    = buf.val_loss.map(v => v ?? null);
+  trainLossDS.data  = buf.loss.map(toLogScaleValue);
+  valLossDS.data    = buf.val_loss.map(toLogScaleValue);
 
   // MAE chart
   const trainMaeDS  = ensureDataset(chartMAE, `${model}-mae`, `${model} train`, colors.train);
   const valMaeDS    = ensureDataset(chartMAE, `${model}-val-mae`, `${model} val`, colors.val, true);
-  trainMaeDS.data   = buf.mae;
-  valMaeDS.data     = buf.val_mae.map(v => v ?? null);
+  trainMaeDS.data   = buf.mae.map(toLogScaleValue);
+  valMaeDS.data     = buf.val_mae.map(toLogScaleValue);
 
   // Labels (shared x-axis across all models – use max epochs seen so far)
   const maxEpoch  = Math.max(...Object.values(metricsBuffer).flatMap(b => b.epochs));
@@ -288,6 +391,12 @@ document.getElementById("btn-start-training").addEventListener("click", async ()
   const batchSize = parseInt(document.getElementById("batch-size").value, 10);
   const valSplit  = parseFloat(document.getElementById("val-split").value);
   const seed      = parseInt(document.getElementById("seed").value, 10);
+  const models    = Array.from(document.querySelectorAll(".model-checkbox:checked"), el => el.value);
+
+  if (models.length === 0) {
+    showFeedback("train-feedback", "Select at least one model to train.", "error");
+    return;
+  }
 
   resetCharts();
 
@@ -295,7 +404,7 @@ document.getElementById("btn-start-training").addEventListener("click", async ()
     const res  = await fetch("/api/train", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ epochs, batch_size: batchSize, val_split: valSplit, seed }),
+      body: JSON.stringify({ epochs, batch_size: batchSize, val_split: valSplit, seed, models }),
     });
     const data = await res.json();
     if (!res.ok) { showFeedback("train-feedback", `Error: ${data.detail}`, "error"); return; }
@@ -315,6 +424,32 @@ document.getElementById("btn-cancel-training").addEventListener("click", async (
   stopSSE();
   showFeedback("train-feedback", "Training cancellation requested.", "info");
   document.getElementById("btn-cancel-training").classList.add("hidden");
+});
+
+document.getElementById("btn-drop-weights").addEventListener("click", async () => {
+  const confirmed = window.confirm("Delete all saved model weight files in weights/? This cannot be undone.");
+  if (!confirmed) return;
+
+  const btn = document.getElementById("btn-drop-weights");
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/weights/drop", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) {
+      showFeedback("train-feedback", `Error dropping weights: ${data.detail}`, "error");
+      return;
+    }
+
+    showFeedback(
+      "train-feedback",
+      `Removed ${data.removed_count} weight file(s). ${data.missing_count} already missing.`,
+      "success"
+    );
+  } catch (e) {
+    showFeedback("train-feedback", `Request failed: ${e}`, "error");
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 function startSSE(jobId) {
@@ -353,12 +488,15 @@ async function loadSummary(jobId) {
       <td>${escapeHtml(model)}</td>
       <td>${(info.final_train_mae ?? 0).toFixed(4)}</td>
       <td>${(info.final_val_mae  ?? 0).toFixed(4)}</td>
+      <td>${formatDuration(info.elapsed_seconds)}</td>
       <td><code>${escapeHtml(info.weights_path)}</code></td>
     `;
     tbody.appendChild(tr);
   }
+  const totalSec = data.summary.elapsed_seconds;
+  const totalStr = totalSec != null ? ` (${formatDuration(totalSec)} total)` : "";
   document.getElementById("summary-table-wrap").classList.remove("hidden");
-  showFeedback("train-feedback", "✅ Training complete!", "success");
+  showFeedback("train-feedback", `✅ Training complete!${totalStr}`, "success");
 }
 
 // ── Server status ─────────────────────────────────────────
@@ -380,3 +518,5 @@ async function checkServerStatus() {
 
 checkServerStatus();
 setInterval(checkServerStatus, 30000);
+refreshTrainingSampleCount();
+loadTrainingDataTable();

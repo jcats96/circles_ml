@@ -1,0 +1,20 @@
+{
+  "job_id": "train_68f72ab56553",
+  "completed_at": "2026-03-25T23:30:54.864216+00:00",
+  "config": {
+    "epochs": 20,
+    "batch_size": 8,
+    "val_split": 0.25,
+    "seed": 42,
+    "models": [
+      "CNNOneHidden"
+    ]
+  },
+  "models": {
+    "CNNOneHidden": {
+      "weights_path": "Z:\\Documents\\VSCode\\circles_ml\\weights\\cnn_one_hidden.weights.h5",
+      "final_train_mae": 0.04795602709054947,
+      "final_val_mae": 0.6449379324913025
+    }
+  }
+}

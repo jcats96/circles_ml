@@ -1,0 +1,10 @@
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 1, "loss": 1.6395388841629028, "mae": 0.9599568247795105, "val_loss": 1.0136622190475464, "val_mae": 0.763571560382843}
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 2, "loss": 1.2060551643371582, "mae": 0.88128662109375, "val_loss": 0.871614396572113, "val_mae": 0.7249879240989685}
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 3, "loss": 0.9209826588630676, "mae": 0.7601704597473145, "val_loss": 0.7309091687202454, "val_mae": 0.7147637009620667}
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 4, "loss": 0.5320530533790588, "mae": 0.5673561692237854, "val_loss": 1.0445096492767334, "val_mae": 0.8106491565704346}
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 5, "loss": 0.4209498167037964, "mae": 0.5355661511421204, "val_loss": 0.6664109826087952, "val_mae": 0.6642314195632935}
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 6, "loss": 0.2510765790939331, "mae": 0.42535316944122314, "val_loss": 0.6336191296577454, "val_mae": 0.6352941393852234}
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 7, "loss": 0.16269086301326752, "mae": 0.34498050808906555, "val_loss": 0.6444807648658752, "val_mae": 0.6363866925239563}
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 8, "loss": 0.10754837840795517, "mae": 0.26639291644096375, "val_loss": 0.5965366363525391, "val_mae": 0.6177104711532593}
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 9, "loss": 0.09728219360113144, "mae": 0.23417958617210388, "val_loss": 0.5359006524085999, "val_mae": 0.597714364528656}
+{"job_id": "train_dfe5802f347e", "model": "CNNExtraHidden", "epoch": 10, "loss": 0.059234827756881714, "mae": 0.18609210848808289, "val_loss": 0.5968455672264099, "val_mae": 0.61313796043396}

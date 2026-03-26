@@ -37,7 +37,8 @@ def build_model() -> keras.Model:
             keras.layers.Flatten(),
             keras.layers.Dense(64, activation="relu"),
             keras.layers.Dense(32, activation="relu"),
-            keras.layers.Dense(1, activation="relu"),
+            keras.layers.Dense(16, activation="relu"),
+            keras.layers.Dense(1, activation="softplus"),
         ],
         name="circle_counter_cnn_extra_hidden",
     )

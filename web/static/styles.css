@@ -49,6 +49,14 @@ main {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
+#progress-panel {
+  grid-column: 1 / -1;
+}
+
+#training-data-panel {
+  grid-column: 1 / -1;
+}
+
 /* ── Card ─────────────────────────────────────────────── */
 .card {
   background: var(--surface);
@@ -84,7 +92,7 @@ main {
   cursor: crosshair;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: #000;
+  background: #fff;
 }
 
 /* ── Tool row ─────────────────────────────────────────── */
@@ -150,6 +158,13 @@ input[type="text"] {
   margin-bottom: .8rem;
 }
 
+.model-select {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem .8rem;
+  margin-bottom: .9rem;
+}
+
 .btn-row {
   display: flex;
   flex-wrap: wrap;
@@ -188,6 +203,58 @@ input[type="text"] {
 
 .pred-table th { color: var(--muted); background: var(--bg); }
 
+.table-wrap {
+  margin-top: .6rem;
+  overflow-x: auto;
+}
+
+#training-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .83rem;
+}
+
+#training-data-table th,
+#training-data-table td {
+  padding: .35rem .5rem;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+#training-data-table th:nth-child(2),
+#training-data-table td:nth-child(2) {
+  width: 140px;
+}
+
+#training-data-table th {
+  color: var(--muted);
+  background: var(--bg);
+}
+
+.file-missing {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.circle-input {
+  max-width: 110px;
+}
+
+.training-thumb {
+  width: 100%;
+  max-width: 120px;
+  aspect-ratio: 1;
+  height: auto;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  display: block;
+}
+
 /* ── Summary table ────────────────────────────────────── */
 #summary-table {
   width: 100%;
@@ -209,6 +276,17 @@ input[type="text"] {
   grid-template-columns: 1fr 1fr;
   gap: .6rem;
   margin-top: .6rem;
+}
+
+@media (max-width: 800px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .model-select,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Training status ──────────────────────────────────── */

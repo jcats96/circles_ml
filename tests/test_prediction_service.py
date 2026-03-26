@@ -48,7 +48,11 @@ def make_fake_model(return_value: float = 3.0):
 def make_fake_models(values=None) -> dict:
     """Build a models-dict like load_models() returns."""
     if values is None:
-        values = {"Dense": 1.0, "DenseTwoHidden": 2.0, "CNN": 3.0, "CNNExtraHidden": 4.0}
+        values = {
+            "CNN": 3.0,
+            "CNNOneHidden": 4.0,
+            "CNNExtraHidden": 5.0,
+        }
     return {
         label: {"model": make_fake_model(v), "weights_loaded": True, "weights_path": f"/tmp/{label}.h5"}
         for label, v in values.items()
@@ -112,7 +116,7 @@ class TestPredictSingle:
         models = make_fake_models()
         x = np.zeros((1, 32, 32, 1), dtype=np.float32)
         results = predict_single(x, models)
-        assert len(results) == 4
+        assert len(results) == 3
 
     def test_result_has_required_keys(self):
         models = make_fake_models()
@@ -125,26 +129,26 @@ class TestPredictSingle:
 
     def test_rounded_is_non_negative(self):
         # Even if the model outputs a negative raw value, rounded should be ≥ 0.
-        models = make_fake_models({"Dense": -2.5})
+        models = make_fake_models({"CNN": -2.5})
         x = np.zeros((1, 32, 32, 1), dtype=np.float32)
         results = predict_single(x, models)
         assert results[0]["rounded"] >= 0
 
     def test_correct_raw_value(self):
-        models = make_fake_models({"Dense": 3.7})
+        models = make_fake_models({"CNN": 3.7})
         x = np.zeros((1, 32, 32, 1), dtype=np.float32)
         results = predict_single(x, models)
         assert abs(results[0]["raw"] - 3.7) < 1e-5
 
     def test_rounded_value_correct(self):
-        models = make_fake_models({"Dense": 2.6})
+        models = make_fake_models({"CNN": 2.6})
         x = np.zeros((1, 32, 32, 1), dtype=np.float32)
         results = predict_single(x, models)
         assert results[0]["rounded"] == 3  # round(2.6) = 3
 
     def test_weights_loaded_flag_propagated(self):
         models = {
-            "Dense": {
+            "CNN": {
                 "model": make_fake_model(1.0),
                 "weights_loaded": False,
                 "weights_path": "",
@@ -164,7 +168,7 @@ class TestPredictImageBytes:
     def test_basic(self):
         models = make_fake_models()
         results = predict_image_bytes(make_png_bytes(), models)
-        assert len(results) == 4
+        assert len(results) == 3
         for r in results:
             assert isinstance(r["raw"], float)
 

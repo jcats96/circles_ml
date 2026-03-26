@@ -1,0 +1,36 @@
+{
+  "job_id": "train_c44db90b50d1",
+  "completed_at": "2026-03-26T03:25:51.446479+00:00",
+  "elapsed_seconds": 41.34,
+  "config": {
+    "epochs": 20,
+    "batch_size": 8,
+    "val_split": 0.25,
+    "seed": 42,
+    "models": [
+      "CNN",
+      "CNNOneHidden",
+      "CNNExtraHidden"
+    ]
+  },
+  "models": {
+    "CNN": {
+      "weights_path": "/mnt/z/Documents/VSCode/circles_ml/weights/cnn.weights.h5",
+      "final_train_mae": 0.1923108845949173,
+      "final_val_mae": 0.5381671190261841,
+      "elapsed_seconds": 15.82
+    },
+    "CNNOneHidden": {
+      "weights_path": "/mnt/z/Documents/VSCode/circles_ml/weights/cnn_one_hidden.weights.h5",
+      "final_train_mae": 0.19980603456497192,
+      "final_val_mae": 0.5392420887947083,
+      "elapsed_seconds": 11.1
+    },
+    "CNNExtraHidden": {
+      "weights_path": "/mnt/z/Documents/VSCode/circles_ml/weights/cnn_extra_hidden.weights.h5",
+      "final_train_mae": 0.22349540889263153,
+      "final_val_mae": 0.573233425617218,
+      "elapsed_seconds": 14.4
+    }
+  }
+}

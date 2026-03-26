@@ -25,12 +25,6 @@
         <button id="btn-brush" class="tool-btn active" title="Brush">✏️ Brush</button>
         <button id="btn-erase" class="tool-btn" title="Erase">🧹 Erase</button>
         <button id="btn-clear" class="secondary-btn">Clear</button>
-        <label class="toggle-label">
-          <input type="checkbox" id="chk-grid" /> Grid
-        </label>
-        <label class="toggle-label">
-          <input type="checkbox" id="chk-threshold" /> Binary
-        </label>
       </div>
     </section>
 
@@ -64,6 +58,18 @@
     <!-- ── Training Controls ─────────────────────── -->
     <section class="card" id="train-panel">
       <h2>Training Controls</h2>
+      <p class="muted" id="training-sample-count">Training samples: --</p>
+      <div class="model-select" id="model-select">
+        <label class="toggle-label">
+          <input type="checkbox" class="model-checkbox" value="CNN" checked /> CNN
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" class="model-checkbox" value="CNNOneHidden" checked /> CNN One Hidden
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" class="model-checkbox" value="CNNExtraHidden" checked /> CNN Extra Hidden
+        </label>
+      </div>
       <div class="form-grid">
         <label>Epochs <input type="number" id="epochs" min="1" max="1000" value="20" /></label>
         <label>Batch Size <input type="number" id="batch-size" min="1" max="512" value="8" /></label>
@@ -73,6 +79,7 @@
       <div class="btn-row">
         <button id="btn-start-training" class="primary-btn">🚀 Start Training</button>
         <button id="btn-cancel-training" class="danger-btn hidden">🛑 Cancel</button>
+        <button id="btn-drop-weights" class="danger-btn">🧨 Drop Model Weights</button>
       </div>
       <div id="train-feedback" class="feedback hidden"></div>
     </section>
@@ -104,7 +111,28 @@
               <th>Model</th>
               <th>Final Train MAE</th>
               <th>Final Val MAE</th>
+              <th>Duration</th>
               <th>Weights</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Training Data Editor ───────────────────── -->
+    <section class="card" id="training-data-panel">
+      <h2>Training Data</h2>
+      <p class="muted">Review and fix circle counts in the existing training labels.</p>
+      <div id="training-data-feedback" class="feedback hidden"></div>
+      <div class="table-wrap">
+        <table id="training-data-table">
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <th>Image</th>
+              <th>Circles</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody></tbody>

@@ -9,12 +9,28 @@ import it directly without shelling out to a subprocess.
 import json
 import os
 import threading
+import time
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
 import numpy as np
 
 from web.training_jobs import EpochMetric, JobStatus, TrainingJob
+
+
+MODEL_SPECS = [
+    ("CNN", "cnn", "build_cnn_model"),
+    ("CNNOneHidden", "cnn_one_hidden", "build_cnn_one_hidden_model"),
+    ("CNNExtraHidden", "cnn_extra_hidden", "build_cnn_extra_hidden_model"),
+]
+
+
+def _clear_existing_weights(weights_dir: str) -> None:
+    """Remove any existing web-model weight files before a new run starts."""
+    for _, weight_name, _ in MODEL_SPECS:
+        weights_path = os.path.join(weights_dir, f"{weight_name}.weights.h5")
+        if os.path.exists(weights_path):
+            os.remove(weights_path)
 
 
 # ──────────────────────────────────────────────
@@ -59,6 +75,7 @@ def _train_models(
     y_val: np.ndarray,
     epochs: int,
     batch_size: int,
+    selected_models: list[str],
     weights_dir: str,
     runs_dir: str,
 ) -> None:
@@ -70,31 +87,37 @@ def _train_models(
     from models import (
         build_cnn_extra_hidden_model,
         build_cnn_model,
-        build_dense_model,
-        build_dense_two_hidden_model,
+        build_cnn_one_hidden_model,
     )
 
     job.status = JobStatus.RUNNING
 
+    builders = {
+        "build_cnn_model": build_cnn_model,
+        "build_cnn_one_hidden_model": build_cnn_one_hidden_model,
+        "build_cnn_extra_hidden_model": build_cnn_extra_hidden_model,
+    }
     model_specs = [
-        ("Dense", "dense", build_dense_model),
-        ("DenseTwoHidden", "dense_two_hidden", build_dense_two_hidden_model),
-        ("CNN", "cnn", build_cnn_model),
-        ("CNNExtraHidden", "cnn_extra_hidden", build_cnn_extra_hidden_model),
+        (label, weight_name, builders[builder_name])
+        for label, weight_name, builder_name in MODEL_SPECS
+        if label in selected_models
     ]
 
     os.makedirs(weights_dir, exist_ok=True)
+    _clear_existing_weights(weights_dir)
 
     run_dir = os.path.join(runs_dir, job.job_id)
     os.makedirs(run_dir, exist_ok=True)
     metrics_path = os.path.join(run_dir, "metrics.jsonl")
 
     summary_models = {}
+    job_start = time.monotonic()
 
     for label, weight_name, builder in model_specs:
         if job.status == JobStatus.CANCELLED:
             break
 
+        model_start = time.monotonic()
         model = builder()
         effective_batch = min(batch_size, len(x_train))
 
@@ -117,10 +140,12 @@ def _train_models(
         final_train_mae = float(history.history.get("mae", [None])[-1] or 0.0)
         final_val_mae = float(history.history.get("val_mae", [None])[-1] or 0.0)
 
+        model_elapsed = time.monotonic() - model_start
         summary_models[label] = {
             "weights_path": weights_path,
             "final_train_mae": final_train_mae,
             "final_val_mae": final_val_mae,
+            "elapsed_seconds": round(model_elapsed, 2),
         }
 
         # Persist per-epoch metrics to disk.
@@ -145,9 +170,11 @@ def _train_models(
                 fh.write(json.dumps(record) + "\n")
 
     if job.status != JobStatus.CANCELLED:
+        total_elapsed = time.monotonic() - job_start
         summary = {
             "job_id": job.job_id,
             "completed_at": datetime.now(timezone.utc).isoformat(),
+            "elapsed_seconds": round(total_elapsed, 2),
             "config": job.config,
             "models": summary_models,
         }
@@ -190,6 +217,7 @@ def start_training_job(
 
     epochs = int(job.config.get("epochs", 10))
     batch_size = int(job.config.get("batch_size", 8))
+    selected_models = list(job.config.get("models") or [label for label, _, _ in MODEL_SPECS])
 
     def _run():
         try:
@@ -201,6 +229,7 @@ def start_training_job(
                 y_val=y_val,
                 epochs=epochs,
                 batch_size=batch_size,
+                selected_models=selected_models,
                 weights_dir=weights_dir,
                 runs_dir=runs_dir,
             )

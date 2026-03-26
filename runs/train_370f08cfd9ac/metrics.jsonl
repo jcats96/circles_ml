@@ -1,0 +1,10 @@
+{"job_id": "train_370f08cfd9ac", "model": "CNN", "epoch": 1, "loss": 2.857170343399048, "mae": 1.102787733078003, "val_loss": 0.9375, "val_mae": 0.5625}
+{"job_id": "train_370f08cfd9ac", "model": "CNN", "epoch": 2, "loss": 2.857142925262451, "mae": 1.1020407676696777, "val_loss": 0.9375, "val_mae": 0.5625}
+{"job_id": "train_370f08cfd9ac", "model": "CNN", "epoch": 3, "loss": 2.857142925262451, "mae": 1.1020407676696777, "val_loss": 0.9375, "val_mae": 0.5625}
+{"job_id": "train_370f08cfd9ac", "model": "CNN", "epoch": 4, "loss": 2.857142925262451, "mae": 1.1020407676696777, "val_loss": 0.9375, "val_mae": 0.5625}
+{"job_id": "train_370f08cfd9ac", "model": "CNN", "epoch": 5, "loss": 2.857142925262451, "mae": 1.1020407676696777, "val_loss": 0.9375, "val_mae": 0.5625}
+{"job_id": "train_370f08cfd9ac", "model": "CNNExtraHidden", "epoch": 1, "loss": 2.2510368824005127, "mae": 1.1331173181533813, "val_loss": 0.7799170017242432, "val_mae": 0.6976056694984436}
+{"job_id": "train_370f08cfd9ac", "model": "CNNExtraHidden", "epoch": 2, "loss": 1.6259387731552124, "mae": 1.0174914598464966, "val_loss": 0.75400710105896, "val_mae": 0.7007997632026672}
+{"job_id": "train_370f08cfd9ac", "model": "CNNExtraHidden", "epoch": 3, "loss": 1.810162901878357, "mae": 0.9819172620773315, "val_loss": 1.2578805685043335, "val_mae": 0.9564902782440186}
+{"job_id": "train_370f08cfd9ac", "model": "CNNExtraHidden", "epoch": 4, "loss": 1.312660574913025, "mae": 0.9103773236274719, "val_loss": 0.7458944320678711, "val_mae": 0.7182207703590393}
+{"job_id": "train_370f08cfd9ac", "model": "CNNExtraHidden", "epoch": 5, "loss": 0.8412938117980957, "mae": 0.7532147765159607, "val_loss": 0.8658750057220459, "val_mae": 0.7512819170951843}

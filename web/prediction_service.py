@@ -35,7 +35,7 @@ def preprocess_image_path(path: str) -> np.ndarray:
 
 
 def load_models(weights_dir: str) -> Dict:
-    """Load all four model variants with their weights.
+    """Load CNN model variants with their weights.
 
     Returns a dict keyed by model label.  Models whose weight files are
     missing are still included but with weights=None (untrained).
@@ -49,14 +49,12 @@ def load_models(weights_dir: str) -> Dict:
     from models import (
         build_cnn_extra_hidden_model,
         build_cnn_model,
-        build_dense_model,
-        build_dense_two_hidden_model,
+        build_cnn_one_hidden_model,
     )
 
     specs = [
-        ("Dense", "dense", build_dense_model),
-        ("DenseTwoHidden", "dense_two_hidden", build_dense_two_hidden_model),
         ("CNN", "cnn", build_cnn_model),
+        ("CNNOneHidden", "cnn_one_hidden", build_cnn_one_hidden_model),
         ("CNNExtraHidden", "cnn_extra_hidden", build_cnn_extra_hidden_model),
     ]
 
