@@ -9,6 +9,7 @@ import base64
 import csv
 import io
 import os
+import re
 import threading
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
@@ -224,3 +225,74 @@ def read_image_as_png_bytes(path: str) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
+
+
+# ──────────────────────────────────────────────
+# Dataset management
+# ──────────────────────────────────────────────
+
+#: Allowed characters for a custom dataset name.
+_DATASET_NAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,50}$')
+
+
+def list_datasets(training_data_dir: str, custom_datasets_dir: str) -> List[dict]:
+    """Return metadata for every available dataset.
+
+    Always includes the built-in ``circle`` dataset (backed by *training_data_dir*),
+    followed by any user-created custom datasets found under *custom_datasets_dir*.
+
+    Returns a list of dicts with keys ``id``, ``type``, ``name``, ``sample_count``.
+    """
+    datasets: List[dict] = []
+
+    # Built-in circle dataset
+    circle_count = len(list_training_samples(training_data_dir))
+    datasets.append(
+        {"id": "circle", "type": "circle", "name": "Circle", "sample_count": circle_count}
+    )
+
+    # User-created custom datasets
+    if os.path.isdir(custom_datasets_dir):
+        for name in sorted(os.listdir(custom_datasets_dir)):
+            ds_dir = os.path.join(custom_datasets_dir, name)
+            if os.path.isdir(ds_dir):
+                count = len(list_training_samples(ds_dir))
+                datasets.append(
+                    {
+                        "id": f"custom_{name}",
+                        "type": "custom",
+                        "name": name,
+                        "sample_count": count,
+                    }
+                )
+
+    return datasets
+
+
+def create_custom_dataset(name: str, custom_datasets_dir: str) -> dict:
+    """Create a new empty custom dataset directory.
+
+    Args:
+        name:               Dataset name (letters, digits, underscores, hyphens; 1–50 chars).
+        custom_datasets_dir: Root directory that holds all custom datasets.
+
+    Returns:
+        Metadata dict with ``id``, ``type``, ``name``, ``sample_count``.
+
+    Raises:
+        ValueError: If *name* is invalid or a dataset with that name already exists.
+        OSError:    If the directory cannot be created.
+    """
+    if not _DATASET_NAME_RE.match(name):
+        raise ValueError(
+            "Dataset name must be 1–50 characters containing only letters, "
+            "digits, underscores, or hyphens."
+        )
+
+    ds_dir = os.path.join(custom_datasets_dir, name)
+    if os.path.exists(ds_dir):
+        raise ValueError(f"A dataset named '{name}' already exists.")
+
+    os.makedirs(os.path.join(ds_dir, "images"), exist_ok=True)
+
+    return {"id": f"custom_{name}", "type": "custom", "name": name, "sample_count": 0}

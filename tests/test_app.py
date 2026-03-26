@@ -56,10 +56,11 @@ def patch_directories(tmp_path, monkeypatch):
     """Redirect all directory constants in web.app to tmp_path."""
     import web.app as app_module
 
-    monkeypatch.setattr(app_module, "TRAINING_DATA_DIR", str(tmp_path / "training_data"))
-    monkeypatch.setattr(app_module, "TEST_DATA_DIR",     str(tmp_path / "test_data"))
-    monkeypatch.setattr(app_module, "WEIGHTS_DIR",       str(tmp_path / "weights"))
-    monkeypatch.setattr(app_module, "RUNS_DIR",          str(tmp_path / "runs"))
+    monkeypatch.setattr(app_module, "TRAINING_DATA_DIR",    str(tmp_path / "training_data"))
+    monkeypatch.setattr(app_module, "TEST_DATA_DIR",         str(tmp_path / "test_data"))
+    monkeypatch.setattr(app_module, "WEIGHTS_DIR",           str(tmp_path / "weights"))
+    monkeypatch.setattr(app_module, "RUNS_DIR",              str(tmp_path / "runs"))
+    monkeypatch.setattr(app_module, "CUSTOM_DATASETS_DIR",   str(tmp_path / "custom_datasets"))
     # Also reset the models cache so tests don't share it.
     monkeypatch.setattr(app_module, "_models_cache", None)
 
@@ -384,3 +385,148 @@ class TestTrainingEndpoints:
         resp = await client.post(f"/api/train/{job.job_id}/cancel")
         assert resp.status_code == 200
         assert resp.json()["status"] == JobStatus.CANCELLED
+
+
+# ── dataset management endpoints ──────────────────────────────────────────────
+
+
+class TestGetDatasets:
+    async def test_returns_circle_dataset(self, client):
+        resp = await client.get("/api/datasets")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "datasets" in body
+        ids = [d["id"] for d in body["datasets"]]
+        assert "circle" in ids
+
+    async def test_circle_dataset_type(self, client):
+        resp = await client.get("/api/datasets")
+        datasets = resp.json()["datasets"]
+        circle = next(d for d in datasets if d["id"] == "circle")
+        assert circle["type"] == "circle"
+        assert circle["name"] == "Circle"
+        assert "sample_count" in circle
+
+    async def test_custom_dataset_appears_after_creation(self, client):
+        await client.post("/api/datasets", json={"name": "stars"})
+        resp = await client.get("/api/datasets")
+        ids = [d["id"] for d in resp.json()["datasets"]]
+        assert "custom_stars" in ids
+
+    async def test_no_custom_datasets_initially(self, client):
+        resp = await client.get("/api/datasets")
+        custom = [d for d in resp.json()["datasets"] if d["type"] == "custom"]
+        assert custom == []
+
+
+class TestPostDataset:
+    async def test_create_dataset_201(self, client):
+        resp = await client.post("/api/datasets", json={"name": "triangles"})
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["id"] == "custom_triangles"
+        assert body["type"] == "custom"
+        assert body["name"] == "triangles"
+        assert body["sample_count"] == 0
+
+    async def test_duplicate_name_returns_422(self, client):
+        await client.post("/api/datasets", json={"name": "shapes"})
+        resp = await client.post("/api/datasets", json={"name": "shapes"})
+        assert resp.status_code == 422
+
+    async def test_invalid_name_rejected_by_schema(self, client):
+        resp = await client.post("/api/datasets", json={"name": "has spaces"})
+        assert resp.status_code == 422
+
+    async def test_empty_name_rejected(self, client):
+        resp = await client.post("/api/datasets", json={"name": ""})
+        assert resp.status_code == 422
+
+    async def test_name_with_hyphens_and_underscores_ok(self, client):
+        resp = await client.post("/api/datasets", json={"name": "my-custom_ds"})
+        assert resp.status_code == 201
+
+
+class TestDatasetScopedTrainingSamples:
+    async def test_post_to_custom_dataset(self, client):
+        await client.post("/api/datasets", json={"name": "stars"})
+        resp = await client.post(
+            "/api/training-samples?dataset=custom_stars",
+            json={"image": make_b64_png(), "circles": 2},
+        )
+        assert resp.status_code == 201
+
+    async def test_custom_dataset_samples_isolated_from_circle(self, client):
+        await client.post("/api/datasets", json={"name": "stars"})
+        await client.post(
+            "/api/training-samples?dataset=custom_stars",
+            json={"image": make_b64_png(), "circles": 1},
+        )
+        circle_resp = await client.get("/api/training-samples?dataset=circle")
+        custom_resp = await client.get("/api/training-samples?dataset=custom_stars")
+        assert circle_resp.json()["count"] == 0
+        assert custom_resp.json()["count"] == 1
+
+    async def test_unknown_dataset_returns_404(self, client):
+        resp = await client.get("/api/training-samples?dataset=custom_nonexistent")
+        assert resp.status_code == 404
+
+    async def test_invalid_dataset_id_returns_422(self, client):
+        resp = await client.get("/api/training-samples?dataset=badformat")
+        assert resp.status_code == 422
+
+
+class TestServeDatasetImage:
+    async def test_serve_circle_image(self, client, tmp_path, monkeypatch):
+        import web.app as app_module
+
+        # Pre-create the circle training data dir with an image
+        img_dir = tmp_path / "training_data" / "images"
+        img_dir.mkdir(parents=True)
+        img_path = img_dir / "test.png"
+        img_path.write_bytes(make_png_bytes())
+
+        monkeypatch.setattr(app_module, "TRAINING_DATA_DIR", str(tmp_path / "training_data"))
+
+        resp = await client.get("/api/dataset-images/circle/test.png")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+
+    async def test_serve_missing_image_returns_404(self, client):
+        resp = await client.get("/api/dataset-images/circle/nonexistent.png")
+        assert resp.status_code == 404
+
+    async def test_serve_unknown_dataset_returns_404(self, client):
+        resp = await client.get("/api/dataset-images/custom_nope/img.png")
+        assert resp.status_code == 404
+
+
+class TestTrainRequestWithDataset:
+    async def test_start_training_with_circle_dataset(self, client, monkeypatch):
+        import sys
+        import types
+        import web.app as app_module
+
+        mocked_start = mock.MagicMock()
+        monkeypatch.setattr(app_module, "start_training_job", mocked_start)
+
+        dummy_x = np.zeros((4, 32, 32, 1), dtype=np.float32)
+        dummy_y = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+        train_models_mock = types.ModuleType("train_models")
+        train_models_mock.load_dataset = mock.MagicMock(return_value=(dummy_x, dummy_y))
+        monkeypatch.setitem(sys.modules, "train_models", train_models_mock)
+
+        resp = await client.post(
+            "/api/train",
+            json={"epochs": 2, "batch_size": 4, "val_split": 0.25, "seed": 42,
+                  "models": ["CNN"], "dataset": "circle"},
+        )
+        assert resp.status_code == 202
+
+    async def test_start_training_with_unknown_dataset_returns_404(self, client):
+        resp = await client.post(
+            "/api/train",
+            json={"epochs": 2, "batch_size": 4, "val_split": 0.25, "seed": 42,
+                  "models": ["CNN"], "dataset": "custom_nope"},
+        )
+        assert resp.status_code == 404

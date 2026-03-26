@@ -27,6 +27,8 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from web.data_io import (
+    create_custom_dataset,
+    list_datasets,
     list_prediction_samples,
     list_training_samples,
     read_image_as_png_bytes,
@@ -46,6 +48,7 @@ TRAINING_DATA_DIR = os.path.join(_ROOT, "training_data")
 TEST_DATA_DIR = os.path.join(_ROOT, "test_data")
 WEIGHTS_DIR = os.path.join(_ROOT, "weights")
 RUNS_DIR = os.path.join(_ROOT, "runs")
+CUSTOM_DATASETS_DIR = os.path.join(_ROOT, "custom_datasets")
 
 # ──────────────────────────────────────────────
 # App
@@ -109,6 +112,17 @@ class TrainRequest(BaseModel):
         default_factory=lambda: [label for label, _, _ in MODEL_SPECS],
         min_length=1,
     )
+    dataset: str = Field("circle", description="Dataset ID to train on (e.g. 'circle' or 'custom_stars')")
+
+
+class CreateDatasetRequest(BaseModel):
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        pattern=r'^[a-zA-Z0-9_-]+$',
+        description="Custom dataset name (letters, digits, underscores, hyphens)",
+    )
 
 
 class PredictImageRequest(BaseModel):
@@ -131,15 +145,66 @@ async def root():
 
 
 # ──────────────────────────────────────────────
-# Dataset endpoints
+# Dataset helpers
 # ──────────────────────────────────────────────
 
 
-@app.post("/api/training-samples", status_code=201)
-async def post_training_sample(req: TrainingSampleRequest):
-    """Save a drawn image and label to the training set."""
+def _require_dataset_dir(dataset_id: str) -> str:
+    """Resolve a dataset ID to its directory, raising HTTPException if unknown."""
+    if dataset_id == "circle":
+        return TRAINING_DATA_DIR
+    if dataset_id.startswith("custom_"):
+        name = dataset_id[len("custom_"):]
+        ds_dir = os.path.join(CUSTOM_DATASETS_DIR, name)
+        if os.path.isdir(ds_dir):
+            return ds_dir
+        raise HTTPException(status_code=404, detail=f"Dataset '{dataset_id}' not found")
+    raise HTTPException(status_code=422, detail=f"Invalid dataset ID: '{dataset_id}'")
+
+
+# ──────────────────────────────────────────────
+# Dataset management endpoints
+# ──────────────────────────────────────────────
+
+
+@app.get("/api/datasets")
+async def get_datasets():
+    """List all available datasets (built-in circle + user-created custom)."""
+    return {"datasets": list_datasets(TRAINING_DATA_DIR, CUSTOM_DATASETS_DIR)}
+
+
+@app.post("/api/datasets", status_code=201)
+async def post_dataset(req: CreateDatasetRequest):
+    """Create a new custom dataset."""
     try:
-        filename = save_training_sample(req.image, req.circles, TRAINING_DATA_DIR)
+        ds = create_custom_dataset(req.name, CUSTOM_DATASETS_DIR)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return ds
+
+
+@app.get("/api/dataset-images/{dataset_id}/{filename}")
+async def serve_dataset_image(dataset_id: str, filename: str):
+    """Serve a training image from the specified dataset."""
+    from fastapi.responses import FileResponse
+
+    data_dir = _require_dataset_dir(dataset_id)
+    # Prevent path traversal
+    safe_name = os.path.basename(filename)
+    img_path = os.path.join(data_dir, "images", safe_name)
+    if not os.path.isfile(img_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(img_path, media_type="image/png")
+
+
+@app.post("/api/training-samples", status_code=201)
+async def post_training_sample(req: TrainingSampleRequest, dataset: str = Query("circle")):
+    """Save a drawn image and label to the training set."""
+    data_dir = _require_dataset_dir(dataset)
+    try:
+        filename = save_training_sample(req.image, req.circles, data_dir)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except OSError as exc:
@@ -148,17 +213,21 @@ async def post_training_sample(req: TrainingSampleRequest):
 
 
 @app.get("/api/training-samples")
-async def get_training_samples():
+async def get_training_samples(dataset: str = Query("circle")):
     """List all training samples with their labels."""
-    samples = list_training_samples(TRAINING_DATA_DIR)
+    data_dir = _require_dataset_dir(dataset)
+    samples = list_training_samples(data_dir)
     return {"samples": samples, "count": len(samples)}
 
 
 @app.patch("/api/training-samples/{filename}")
-async def patch_training_sample(filename: str, req: UpdateTrainingLabelRequest):
+async def patch_training_sample(
+    filename: str, req: UpdateTrainingLabelRequest, dataset: str = Query("circle")
+):
     """Update the label (circle count) for a training sample filename."""
+    data_dir = _require_dataset_dir(dataset)
     try:
-        updated = update_training_label(TRAINING_DATA_DIR, filename, req.circles)
+        updated = update_training_label(data_dir, filename, req.circles)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except OSError as exc:
@@ -229,21 +298,24 @@ async def start_training(req: TrainRequest, background_tasks: BackgroundTasks):
     if invalid_models:
         raise HTTPException(status_code=422, detail=f"Unknown model selection: {', '.join(invalid_models)}")
 
+    # Validate the dataset ID up front so the response is synchronous.
+    training_dir = _require_dataset_dir(req.dataset)
+
     config = {
         "epochs": req.epochs,
         "batch_size": req.batch_size,
         "val_split": req.val_split,
         "seed": req.seed,
         "models": req.models,
+        "dataset": req.dataset,
     }
     job = create_job(config)
 
     def _run():
-        import numpy as np
-        from train_models import load_dataset, split_dataset
+        from train_models import load_dataset
 
         try:
-            x, y = load_dataset(TRAINING_DATA_DIR)
+            x, y = load_dataset(training_dir)
         except Exception as exc:
             job.fail(str(exc))
             return
