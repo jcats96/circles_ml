@@ -21,6 +21,8 @@ from web.data_io import (
     _decode_base64_or_raw,
     _generate_filename,
     _normalize_image,
+    create_custom_dataset,
+    list_datasets,
     list_prediction_samples,
     list_training_samples,
     read_image_as_png_bytes,
@@ -329,3 +331,96 @@ class TestReadImageAsPngBytes:
         data = read_image_as_png_bytes(str(p))
         result = Image.open(io.BytesIO(data))
         assert result.size == (32, 32)
+
+
+# ──────────────────────────────────────────────────────────
+# list_datasets
+# ──────────────────────────────────────────────────────────
+
+
+class TestListDatasets:
+    def test_always_includes_circle(self, tmp_path):
+        result = list_datasets(str(tmp_path / "training_data"), str(tmp_path / "custom_datasets"))
+        assert any(d["id"] == "circle" for d in result)
+
+    def test_circle_has_correct_type_and_name(self, tmp_path):
+        result = list_datasets(str(tmp_path / "training_data"), str(tmp_path / "custom_datasets"))
+        circle = next(d for d in result if d["id"] == "circle")
+        assert circle["type"] == "circle"
+        assert circle["name"] == "Circle"
+
+    def test_no_custom_without_custom_dir(self, tmp_path):
+        result = list_datasets(str(tmp_path / "training_data"), str(tmp_path / "no_such_dir"))
+        assert all(d["type"] == "circle" for d in result)
+
+    def test_custom_dataset_appears(self, tmp_path):
+        custom_dir = tmp_path / "custom_datasets" / "stars" / "images"
+        custom_dir.mkdir(parents=True)
+        result = list_datasets(str(tmp_path / "training_data"), str(tmp_path / "custom_datasets"))
+        ids = [d["id"] for d in result]
+        assert "custom_stars" in ids
+
+    def test_custom_dataset_type_and_name(self, tmp_path):
+        (tmp_path / "custom_datasets" / "stars" / "images").mkdir(parents=True)
+        result = list_datasets(str(tmp_path / "training_data"), str(tmp_path / "custom_datasets"))
+        stars = next(d for d in result if d["id"] == "custom_stars")
+        assert stars["type"] == "custom"
+        assert stars["name"] == "stars"
+
+    def test_sample_count_reflects_csv(self, tmp_path):
+        td = tmp_path / "training_data"
+        td.mkdir()
+        (td / "images").mkdir()
+        img_path = td / "images" / "a.png"
+        Image.new("L", (32, 32)).save(str(img_path))
+        csv_path = td / "labels.csv"
+        csv_path.write_text("filename,circles\na.png,1\n")
+        result = list_datasets(str(td), str(tmp_path / "custom_datasets"))
+        circle = next(d for d in result if d["id"] == "circle")
+        assert circle["sample_count"] == 1
+
+    def test_custom_datasets_sorted(self, tmp_path):
+        for name in ["zzz", "aaa", "mmm"]:
+            (tmp_path / "custom_datasets" / name / "images").mkdir(parents=True)
+        result = list_datasets(str(tmp_path / "training_data"), str(tmp_path / "custom_datasets"))
+        custom_names = [d["name"] for d in result if d["type"] == "custom"]
+        assert custom_names == sorted(custom_names)
+
+
+# ──────────────────────────────────────────────────────────
+# create_custom_dataset
+# ──────────────────────────────────────────────────────────
+
+
+class TestCreateCustomDataset:
+    def test_returns_correct_metadata(self, tmp_path):
+        result = create_custom_dataset("stars", str(tmp_path / "custom_datasets"))
+        assert result["id"] == "custom_stars"
+        assert result["type"] == "custom"
+        assert result["name"] == "stars"
+        assert result["sample_count"] == 0
+
+    def test_creates_directory_structure(self, tmp_path):
+        create_custom_dataset("triangles", str(tmp_path / "custom_datasets"))
+        assert (tmp_path / "custom_datasets" / "triangles" / "images").is_dir()
+
+    def test_duplicate_raises_value_error(self, tmp_path):
+        create_custom_dataset("shapes", str(tmp_path / "custom_datasets"))
+        with pytest.raises(ValueError, match="already exists"):
+            create_custom_dataset("shapes", str(tmp_path / "custom_datasets"))
+
+    def test_invalid_name_raises_value_error(self, tmp_path):
+        with pytest.raises(ValueError):
+            create_custom_dataset("has spaces", str(tmp_path / "custom_datasets"))
+
+    def test_empty_name_raises_value_error(self, tmp_path):
+        with pytest.raises(ValueError):
+            create_custom_dataset("", str(tmp_path / "custom_datasets"))
+
+    def test_name_too_long_raises_value_error(self, tmp_path):
+        with pytest.raises(ValueError):
+            create_custom_dataset("a" * 51, str(tmp_path / "custom_datasets"))
+
+    def test_hyphens_and_underscores_allowed(self, tmp_path):
+        result = create_custom_dataset("my-pattern_v2", str(tmp_path / "custom_datasets"))
+        assert result["id"] == "custom_my-pattern_v2"

@@ -12,7 +12,21 @@
   <header>
     <h1>⬤ Circles ML</h1>
     <span id="server-status" class="badge">Connecting…</span>
+
+    <!-- ── Mode toggle ── -->
+    <div class="mode-toggle" role="group" aria-label="Dataset mode">
+      <button id="btn-mode-circle" class="mode-btn active" aria-pressed="true">🔵 Circle</button>
+      <button id="btn-mode-custom" class="mode-btn" aria-pressed="false">✏️ Custom</button>
+    </div>
   </header>
+
+  <!-- ── Custom dataset bar (visible only in Custom mode) ── -->
+  <div id="custom-dataset-bar" class="custom-dataset-bar hidden">
+    <label for="dataset-select" class="dataset-bar-label">Dataset:</label>
+    <select id="dataset-select" class="dataset-select"></select>
+    <button id="btn-new-dataset" class="secondary-btn">＋ New Dataset</button>
+    <span id="dataset-bar-feedback" class="dataset-bar-feedback hidden"></span>
+  </div>
 
   <main>
     <!-- ── Drawing Panel ─────────────────────────── -->
@@ -32,7 +46,7 @@
     <section class="card" id="actions-panel">
       <h2>Sample Actions</h2>
       <label>
-        Circle count
+        <span id="count-label">Circle count</span>
         <input type="number" id="circle-count" min="0" max="50" value="0" />
       </label>
       <div class="btn-row">
@@ -123,7 +137,7 @@
     <!-- ── Training Data Editor ───────────────────── -->
     <section class="card" id="training-data-panel">
       <h2>Training Data</h2>
-      <p class="muted">Review and fix circle counts in the existing training labels.</p>
+      <p class="muted">Review and fix counts in the existing training labels.</p>
       <div id="training-data-feedback" class="feedback hidden"></div>
       <div class="table-wrap">
         <table id="training-data-table">
@@ -131,7 +145,7 @@
             <tr>
               <th>Filename</th>
               <th>Image</th>
-              <th>Circles</th>
+              <th>Count</th>
               <th>Action</th>
             </tr>
           </thead>

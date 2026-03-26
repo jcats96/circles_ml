@@ -296,3 +296,85 @@ input[type="text"] {
   align-items: center;
   margin-bottom: .5rem;
 }
+
+/* ── Mode toggle ──────────────────────────────────────── */
+.mode-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-left: auto;
+}
+
+.mode-btn {
+  background: var(--surface);
+  color: var(--muted);
+  border: none;
+  border-radius: 0;
+  padding: .35rem .8rem;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.mode-btn + .mode-btn {
+  border-left: 1px solid var(--border);
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  color: #0d1117;
+  font-weight: 600;
+}
+
+.mode-btn:hover:not(.active) {
+  background: var(--border);
+  color: var(--text);
+}
+
+/* ── Custom dataset bar ───────────────────────────────── */
+.custom-dataset-bar {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .5rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.dataset-bar-label {
+  display: inline;
+  flex-direction: unset;
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+.dataset-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: .3rem .6rem;
+  font-size: .85rem;
+  min-width: 160px;
+}
+
+.dataset-bar-feedback {
+  font-size: .8rem;
+  padding: .2rem .6rem;
+  border-radius: 4px;
+}
+
+.dataset-bar-feedback.success {
+  background: rgba(63,185,80,.15);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.dataset-bar-feedback.error {
+  background: rgba(248,81,73,.15);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
