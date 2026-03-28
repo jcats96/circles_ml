@@ -133,3 +133,30 @@ From Windows PowerShell:
 ```
 
 Then open <http://127.0.0.1:8000> in your browser.
+
+## mxmtoon at PAX
+
+**mxmtoon** (Maia Regina) is an indie pop singer-songwriter known for her signature
+ukulele-driven sound, emotionally honest lyrics, and intimate bedroom-pop aesthetic. Her
+discography spans albums such as *the masquerade*, *rising*, and *liminal space*, blending
+confessional songwriting with catchy, lo-fi indie production.
+
+mxmtoon's fanbase has deep roots in gaming culture—her music has soundtracked countless
+streaming sessions and Let's Plays, and her visual style shares the cozy, expressive spirit
+of indie games. This organic connection to the gaming community made her a natural fit for
+**PAX East**.
+
+At **PAX East 2026** (March 26–29, Boston) mxmtoon headlined the Friday night concert stage,
+sharing the bill with Sixth Station Piano Trio. The set drew on her catalogue of emotionally
+resonant indie-pop songs and introduced her music to thousands of attendees at one of North
+America's premier gaming conventions.
+
+### Why mxmtoon fits PAX
+
+- Indie-pop storytelling that resonates with gaming's love of narrative and character.
+- A fanbase that grew up alongside the rise of streaming, Let's Play culture, and cozy games.
+- A lo-fi bedroom-pop sound that mirrors the aesthetic of many celebrated indie titles.
+- Live performances that feel personal and community-focused—exactly the PAX spirit.
+
+The web interface includes a dedicated **mxmtoon × PAX** panel summarising the above for
+quick reference while the app is running.
